@@ -1,0 +1,5 @@
+TESTS = 		\
+  test-nodefinder
+
+EXTRA_DIST +=		\
+  test-nodefinder

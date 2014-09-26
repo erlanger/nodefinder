@@ -1,0 +1,33 @@
+#! /usr/bin/env escript
+% vim: filetype=erlang
+
+-mode (compile).
+
+is_proplist (List) when is_list (List) ->
+  lists:all (fun ({ X, _ }) when is_atom (X) -> true;
+                 (X) when is_atom (X) -> true;
+                 (_) -> false
+             end,
+             List).
+
+main ([ Filename ]) ->
+  put (stderr, open_port ({ fd, 0, 2 }, [ out ])),
+  try
+    { ok, [ { application, Atom, PropList } ] } = file:consult (Filename),
+    true = is_atom (Atom),
+    true = is_proplist (PropList)
+  catch
+    _ : _ ->
+      port_command 
+        (get (stderr), 
+          io_lib:format ("error: malformed application file ~p~n", 
+                         [ Filename ])),
+      timer:sleep (100),
+      halt (1)
+  end,
+  halt (0);
+main (_) ->
+  put (stderr, open_port ({ fd, 0, 2 }, [ out ])),
+  port_command (get (stderr), "usage: check-app-file filename\n"),
+  timer:sleep (100),
+  halt (1).

@@ -1,0 +1,141 @@
+#! /bin/sh
+
+#---------------------------------------------------------------------
+#                                init                                 
+# 
+# This is called by the template init method, which is itself called
+# by fw-init which a project is being initialized.  It is intended
+# for creating files in the project that will remain in the project
+# and are owned by the project.  Creation of (symlinks to) files
+# owned by the build method should be done at bootstrap time.
+#---------------------------------------------------------------------
+
+#---------------------------------------------------------------------
+#                           chicken and egg                           
+#---------------------------------------------------------------------
+
+which perl >/dev/null 2>/dev/null || {
+  echo "C/init: fatal: can't locate perl" 1>&2
+  exit 1
+}
+
+if test -z "${FW_ROOT}"
+  then
+    FW_ROOT=`echo "$0" | perl -pe 's%fw/template/C/init$%%;'`
+    export FW_ROOT
+  fi
+
+test -f "${FW_ROOT}/share/fw/sh/fw-find.sh" || {
+  echo "C/init: fatal: can't determine FW_ROOT" 1>&2
+  echo "C/init: please set the environment variable" 1>&2
+  exit 1
+}
+
+. "${FW_ROOT}/share/fw/sh/fw-find.sh"
+
+#---------------------------------------------------------------------
+#                              routines                               
+#---------------------------------------------------------------------
+
+fw_source "C/init" "sh/fatal.sh"
+fw_source "C/init" "sh/fw-exec.sh"
+fw_source "C/init" "sh/parse-args.sh"
+fw_source "C/init" "sh/validate-args.sh"
+
+#---------------------------------------------------------------------
+#                                main                                 
+#---------------------------------------------------------------------
+
+fw_exec "build/automake/init" "$@" || fatal "C/init"
+
+parse_args "C/init" "$@"
+
+validate_args "C/init" "name" ""
+
+for dir in src tests 
+  do
+    mkdir "$dir" || fatal "C/init"
+    fw_exec "revision/$revision/add-dir" "$dir" || fatal "C/init"
+
+    for x in Makefile.am.local
+      do
+        fw_find "template/C/$dir/$x" file
+        test -z "$file" && fatal "C/init"
+        cp -f "$file" "$dir" || fatal "C/init"
+        chmod +w "$dir/$x" || fatal "C/init"
+      done
+
+    for x in testprog.c myprog.c mylib.c mylib.h
+      do
+        fw_find "template/C/$dir/$x" file
+        test -z "$file" || {
+          cp -f "$file" "$dir" || fatal "C/init"
+          chmod +w "$dir/$x" || fatal "C/init"
+        }
+      done
+
+    (
+      cd "$dir" &&                                              \
+      fw_exec "revision/$revision/add-files"                    \
+        Makefile.am.local                                       \
+        testprog.c                                              \
+        myprog.c                                                \
+        mylib.c                                                 \
+        mylib.h &&                                              \
+      fw_exec "revision/$revision/ignore-files"                 \
+        Makefile                                                \
+        '*.bb'                                                  \
+        '*.bbg'                                                 \
+        '*.da'                                                  \
+        '*.gcda'                                                \
+        '*.gcna'                                                \
+        '*.gcno'                                                \
+        '*.gcov'                                                \
+        '*.in'                                                  \
+        '*.la'                                                  \
+        '*.lo'                                                  \
+        '.deps'                                                 \
+        '.libs'                                                 \
+    ) || fatal "C/init"
+  done
+
+(
+  cd "src" &&                                                   \
+  fw_exec "revision/$revision/ignore-files"                     \
+    config.h                                                    \
+    stamp-h1                                                    \
+    "${name}.h"                                                 \
+) || fatal "C/init"
+
+(
+  cd "tests" &&                                                 \
+  fw_exec "revision/$revision/ignore-files"                     \
+    "test-wrapper.sh"                                           \
+) || fatal "C/init"
+
+fw_exec "revision/$revision/ignore-files"                       \
+  libtool                                                       \
+  pkgconfig-template.pc.in                                      \
+|| fatal "C/init"
+
+(
+  cd fw-pkgin &&
+  cat <<'EOD' >> config
+
+# uncomment and set to specify additional pkg-config packages on the Requires:
+# line of the generated .pc file
+# FW_PKGCONFIG_REQUIRES_EXTRA=""
+
+# uncomment and set to specify additional content for the Libs:
+# line of the generated .pc file
+# FW_PKGCONFIG_LIBS_EXTRA=""
+
+# uncomment and set to specify additional content for the Cflags:
+# line of the generated .pc file
+# FW_PKGCONFIG_CFLAGS_EXTRA=""
+
+# uncomment and set to add arbitrary additional content to the 
+# generated .pc file
+# FW_PKGCONFIG_EXTRA=""
+EOD
+) || fatal "C/init"

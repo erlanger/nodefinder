@@ -1,0 +1,32 @@
+# The FW_PACKAGE_MAINTAINER field is populated with the 
+# environment variable FW_PACKAGE_DEFAULT_MAINTAINER if non-empty
+
+FW_PACKAGE_NAME="nodefinder"
+FW_PACKAGE_VERSION="0.2.1"
+FW_PACKAGE_MAINTAINER="Paul Mineiro <paul@n54.com>"
+FW_PACKAGE_SHORT_DESCRIPTION="Erlang multicast node discovery service."
+FW_PACKAGE_DESCRIPTION="`cat README`"
+FW_PACKAGE_ARCHITECTURE_DEPENDENT="0"
+
+# Dependency information.  The native syntax corresponds to Debian,
+# http://www.debian.org/doc/debian-policy/ch-relationships.html
+# Section 7.1 "Syntax of Relationship Fields"
+# 
+# For other packaging systems, the syntax is translated for you.
+
+FW_PACKAGE_DEPENDS=""
+FW_PACKAGE_CONFLICTS=""
+FW_PACKAGE_PROVIDES="nodefinder-service"
+
+FW_PACKAGE_BUILD_DEPENDS=""
+FW_PACKAGE_BUILD_CONFLICTS=""
+
+FW_DUPLOAD_ARGS=${FW_DUPLOAD_ARGS-"-t dukes"}
+
+FW_SUBVERSION_TAG_ROOT="https://nodefinder.googlecode.com/svn/tags/nodefinder"
+
+FW_ERL_APP_ENVIRONMENT="[{ addr, { 226, 0, 0, 1 } }, 
+                         { port, 6969 },
+                         { multicast_ttl, 1 }]"
+
+FW_ERL_PREREQ_APPLICATIONS_EXTRA="[ crypto ]"

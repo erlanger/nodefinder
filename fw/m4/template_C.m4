@@ -1,0 +1,14 @@
+AC_DEFUN([FW_TEMPLATE_C],
+[
+  AC_REQUIRE([FW_TEMPLATE_C_ENABLE_COVERAGE])
+  AC_REQUIRE([FW_TEMPLATE_C_ENABLE_HARDCORE])
+  AC_REQUIRE([FW_TEMPLATE_C_SETUP_PKGCONFIG])
+
+  AC_CHECK_PROG([FW_VALGRIND], [valgrind], [valgrind], [none])
+  AM_CONDITIONAL([FW_HAVE_VALGRIND], [test "$FW_VALGRIND" = "valgrind"])
+
+  AM_CONFIG_HEADER([src/config.h])
+
+  AC_CONFIG_FILES([src/Makefile
+                   tests/Makefile])
+])

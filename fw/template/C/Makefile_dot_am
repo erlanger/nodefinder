@@ -1,0 +1,34 @@
+include $(top_srcdir)/fw/build/automake/Makefile_dot_am
+
+SUBDIRS += src tests
+
+memcheck:
+	cd tests && $(MAKE) memcheck
+
+memcheck-%:
+	cd tests && $(MAKE) memcheck-$*
+
+leakcheck:
+	cd tests && $(MAKE) leakcheck
+
+leakcheck-%:
+	cd tests && $(MAKE) leakcheck-$*
+
+pkgconfigdir = $(libdir)/pkgconfig
+pkgconfig_DATA = @FW_PACKAGE_NAME@-@FW_PACKAGE_MAJOR_VERSION@.0.pc
+
+@FW_PACKAGE_NAME@-@FW_PACKAGE_MAJOR_VERSION@.0.pc: pkgconfig-template.pc
+	@ln -f $< $@
+
+srcmakefileamfiles := $(shell find src -name '*.am' -or -name '*.am.local')
+
+pkgconfig-template.pc.in: $(srcmakefileamfiles)
+	@fw-exec "template/C/make-pkgconfig-template" $^ > $@
+
+CLEANFILES +=                                   	\
+  pkgconfig-template.pc                        	 	\
+  @FW_PACKAGE_NAME@-@FW_PACKAGE_MAJOR_VERSION@.0.pc
+
+MAINTAINERCLEANFILES += 				\
+  pkgconfig-template.pc.in				\
+  ltmain.sh
