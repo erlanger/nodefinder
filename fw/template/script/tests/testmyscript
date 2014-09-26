@@ -1,9 +1,0 @@
-#! /bin/sh
-
-#---------------------------------------------------------------------
-#                            testmyscript                             
-# 
-# Something that tests that myscript does what it's supposed to.
-#---------------------------------------------------------------------
-
-../bin/myscript

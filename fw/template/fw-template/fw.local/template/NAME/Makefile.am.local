@@ -1,5 +1,0 @@
-# put whatever (auto)make commands here, they will be included from Makefile.am
-
-dist_template_DATA = 			\
-  Makefile_dot_am			\
-  configure.ac

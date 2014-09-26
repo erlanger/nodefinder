@@ -1,3 +1,0 @@
-.BEGIN:
-	@echo "fw requires GNU make to build, you are using bsd make" 1>&2
-	@exit 1
