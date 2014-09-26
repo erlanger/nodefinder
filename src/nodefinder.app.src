@@ -1,0 +1,14 @@
+{application, nodefinder,
+ [
+  {description, "nodefinder - attach to multicast auto-discovered Erlang nodes"},
+  {vsn, git},
+  {registered, [nodefindersrv]},
+  {applications, [
+                  kernel,
+                  stdlib,
+                  crypto
+                 ]},
+  {mod, { nodefinder, []}},
+  {env, [{addr,{226,0,0,1}},{port,4369},{multicast_ttl,1}]}
+ ]}.
+

@@ -13,7 +13,7 @@ start_link (Addr, Port) ->
   start_link (Addr, Port, 1).
 
 start_link (Addr, Port, Ttl) ->
-  supervisor:start_link (?MODULE, [ Addr, Port, Ttl ]).
+  supervisor:start_link ({local,?MODULE}, ?MODULE, [ Addr, Port, Ttl ]).
 
 %-=====================================================================-
 %-                         Supervisor callbacks                        -
