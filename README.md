@@ -1,6 +1,6 @@
 # Automatic node discovery #
 
-This code is originally from  [https://code.google.com/p/nodefinder]
+This code is originally from  https://code.google.com/p/nodefinder
 
 ## How to use ##
 
