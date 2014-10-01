@@ -1,3 +1,0 @@
-Erlang node LAN discovery service.  Uses multicast UDP.
-**Not working at this moment with Erlang OTP 17
-maybe packet format has changed? ***
