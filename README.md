@@ -1,6 +1,7 @@
 # Automatic node discovery #
 
-This code is originally from  https://code.google.com/p/nodefinder
+This code is originally from  https://code.google.com/p/nodefinder, I have only fixed
+a few warnings from used old crypto functions.
 
 ## How to use ##
 
