@@ -96,8 +96,8 @@ discover (State) ->
 mac (Message) ->
   % Don't use cookie directly, creates a known-plaintext attack on cookie.
   % hehe ... as opposed to using ps :)
-  Key = crypto:sha (erlang:term_to_binary (erlang:get_cookie ())),
-  crypto:sha_mac (Key, Message).
+  Key = crypto:hash(sha, erlang:term_to_binary (erlang:get_cookie ()) ),
+  crypto:hmac (sha,Key, Message).
 
 process_packet ("DISCOVER " ++ NodeName, IP, InPortNo, State) -> 
   error_logger:warning_msg ("old DISCOVER packet from ~p (~p:~p) ~n", 
