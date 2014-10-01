@@ -2,13 +2,15 @@
 
 ## Introduction ##
    This application uses UDP multicast to notify all other nodes about a node's entrance to the
-   cluster.  When the application starts a multicast UDP message is sent to all other nodes, 
-   nodes with the same cookie that are also running nodefinder will connect to the notifying node,
-   updating the cluster dynamically. To summarize, you need the following for automatic node 
-   discovery:
+   cluster.  When the application starts, a multicast UDP message is sent to all other nodes. 
 
-1. Use the same cookie to identify nodes of the same cluster
-2. Start nodefinder when the node starts
+   Nodes with the same cookie (that are also running nodefinder) will connect to the notifying node,
+   updating the cluster dynamically. 
+
+   To summarize, you need the following for automatic node discovery:
+
+   1. Use the same cookie to identify nodes of the same cluster
+   2. Start nodefinder when the node starts
 
 Easy!
 
