@@ -1,5 +1,5 @@
 %% @doc Multicast Erlang node discovery protocol.
-%% Listens on a multicast channel for node discovery requests and 
+%% Listens on a multicast channel for node discovery requests and
 %% responds by connecting to the node.
 %% @hidden
 %% @end
@@ -39,6 +39,8 @@ discover () ->
 init ([ Addr, Port, Ttl ]) ->
   process_flag (trap_exit, true),
 
+  check_node_host(),
+
   Opts = [ { active, true },
            { ip, Addr },
            { add_membership, { Addr, { 0, 0, 0, 0 } } },
@@ -69,13 +71,13 @@ terminate (_Reason, State = #statev2{}) ->
   gen_udp:close (State#statev2.sendsock),
   ok.
 
-code_change (_OldVsn, State = #state{}, _Extra) -> 
+code_change (_OldVsn, State = #state{}, _Extra) ->
   NewState = #statev2{ recvsock = State#state.socket,
                        sendsock = send_socket (1),
                        addr = State#state.addr,
                        port = State#state.port },
   { ok, NewState };
-code_change (_OldVsn, State, _Extra) -> 
+code_change (_OldVsn, State, _Extra) ->
   { ok, State }.
 
 %-=====================================================================-
@@ -99,19 +101,19 @@ mac (Message) ->
   Key = crypto:hash(sha, erlang:term_to_binary (erlang:get_cookie ()) ),
   crypto:hmac (sha,Key, Message).
 
-process_packet ("DISCOVER " ++ NodeName, IP, InPortNo, State) -> 
-  error_logger:warning_msg ("old DISCOVER packet from ~p (~p:~p) ~n", 
+process_packet ("DISCOVER " ++ NodeName, IP, InPortNo, State) ->
+  error_logger:warning_msg ("old DISCOVER packet from ~p (~p:~p) ~n",
                             [ NodeName,
                               IP,
                               InPortNo ]),
   State;
-process_packet ("DISCOVERV2 " ++ Rest, IP, InPortNo, State) -> 
+process_packet ("DISCOVERV2 " ++ Rest, IP, InPortNo, State) ->
   % Falling a mac is not really worth logging, since having multiple
   % cookies on the network is one way to prevent crosstalk.  However
   % the packet should always have the right structure.
 
   try
-    <<Mac:20/binary, " ", 
+    <<Mac:20/binary, " ",
       Time:64, " ",
       NodeString/binary>> = list_to_binary (Rest),
 
@@ -128,14 +130,14 @@ process_packet ("DISCOVERV2 " ++ Rest, IP, InPortNo, State) ->
     end
   catch
     error : { badmatch, _ } ->
-      error_logger:warning_msg ("bad DISCOVERV2 from ~p:~p~n", 
+      error_logger:warning_msg ("bad DISCOVERV2 from ~p:~p~n",
                                 [ list_to_binary (Rest),
                                   IP,
                                   InPortNo ])
   end,
 
   State;
-process_packet (_Packet, _IP, _InPortNo, State) -> 
+process_packet (_Packet, _IP, _InPortNo, State) ->
   State.
 
 seconds () ->
@@ -143,9 +145,30 @@ seconds () ->
 
 send_socket (Ttl) ->
   SendOpts = [ { ip, { 0, 0, 0, 0 } },
-               { multicast_ttl, Ttl }, 
+               { multicast_ttl, Ttl },
                { multicast_loop, true } ],
 
   { ok, SendSocket } = gen_udp:open (0, SendOpts),
 
   SendSocket.
+
+%Check that the node host name is reachable
+%print a warning if it is not
+check_node_host() ->
+   Host=hd(tl(string:tokens(atom_to_list(node()),"@"))),
+   Warn =
+      fun() ->
+         error_logger:warning_msg("nodefinder: Host entry for ~p is not found!~n",
+                                  [Host])
+      end,
+   case inet:parse_address(Host) of
+      {ok,   _} -> case inet:gethostbyaddr(Host) of %we have anip address
+                      {error, _} -> Warn();
+                      {ok, _}    -> ok
+                   end;
+      {error,_} -> case inet:gethostbyname(Host) of %we have a host name
+                      {error, _} -> Warn();
+                      {ok, _}    -> ok
+                   end
+   end.
+
