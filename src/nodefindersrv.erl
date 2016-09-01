@@ -17,7 +17,7 @@
 -oldrecord (state).
 
 -record (state, { socket, addr, port }).
--record (statev2, { sendsock, recvsock, addr, port }).
+-record (statev2, { sendsock, recvsock, addr, port, watchnodes = [] }).
 
 %-=====================================================================-
 %-                                Public                               -
@@ -40,6 +40,7 @@ init ([ Addr, Port, Ttl ]) ->
   process_flag (trap_exit, true),
 
   check_node_host(),
+  net_kernel:monitor_nodes(true),
 
   Opts = [ { active, true },
            { ip, Addr },
@@ -64,7 +65,35 @@ handle_info ({ udp, Socket, IP, InPortNo, Packet },
              State=#statev2{ recvsock = Socket }) ->
   { noreply, process_packet (Packet, IP, InPortNo, State) };
 
-handle_info (_Msg, State) -> { noreply, State }.
+%Add downed node to list of watched nodes
+handle_info ({ nodedown, Node }, State) ->
+  Nodes = State#statev2.watchnodes,
+  NewNodes = [ Node | Nodes ],
+  erlang:send_after(30000,self(),{timed_discover, 30}),
+  { noreply, State#statev2{watchnodes=NewNodes} };
+
+%Remove node from list of watched nodes
+handle_info ({ nodeup,   Node }, State) ->
+  Nodes = State#statev2.watchnodes,
+  NewNodes = Nodes -- [ Node ],
+  %discover connects *THIS* node to the found nodes
+  { noreply, discover(State#statev2{watchnodes=NewNodes}) };
+
+%Try to discover nodes if watchnodes list has any nodes in it
+handle_info ({timeout, _TimerRef, { timed_discover,   AgainSecs }},
+             State = #statev2{watchnodes=Nodes}) when length(Nodes) >= 1 ->
+  %TODO: think about exponential timing
+  erlang:send_after(AgainSecs * 1000, self(), {timed_discover, AgainSecs * 1000}),
+  { noreply, discover(State) };
+
+%If watchnodes is empty simply ignore the timer
+handle_info ({timeout, _TimerRef, { timed_discover, _AgainSecs }},
+             State = #statev2{watchnodes=[]}) ->
+  { noreply, State };
+
+%Swallow unknown messages
+handle_info (_Msg, State) ->
+  { noreply, State }.
 
 terminate (_Reason, State = #statev2{}) ->
   gen_udp:close (State#statev2.recvsock),
