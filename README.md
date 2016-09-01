@@ -17,8 +17,8 @@
 Easy!
 
 ## Origin ##
-This code is originally from  https://code.google.com/p/nodefinder, I have improved
-the error handling.
+The base code is originally from  https://code.google.com/p/nodefinder; I have
+added several features, and error handling.
 
 ## How to use ##
 
