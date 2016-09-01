@@ -37,3 +37,9 @@ nodefinder uses the cookie in order to determine which nodes belong to the clust
 
 You could use this feature to setup parallel clusters that don't talk to each other.
 
+## Features ##
+* Nodes are connected as soon as the application is started
+* If a node goes down, reconnection is attempted periodically
+  (for now every 30s)
+* Reconnects also if the network goes down (has been tested by
+  disconnecting a wifi network device and connecting it again)
