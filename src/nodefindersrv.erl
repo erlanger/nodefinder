@@ -80,19 +80,20 @@ handle_info ({ nodeup,   Node }, State) ->
   { noreply, discover(State#statev2{watchnodes=NewNodes}) };
 
 %Try to discover nodes if watchnodes list has any nodes in it
-handle_info ({timeout, _TimerRef, { timed_discover,   AgainSecs }},
+handle_info ({ timed_discover,   AgainSecs },
              State = #statev2{watchnodes=Nodes}) when length(Nodes) >= 1 ->
   %TODO: think about exponential timing
   erlang:send_after(AgainSecs * 1000, self(), {timed_discover, AgainSecs * 1000}),
   { noreply, discover(State) };
 
 %If watchnodes is empty simply ignore the timer
-handle_info ({timeout, _TimerRef, { timed_discover, _AgainSecs }},
+handle_info ({ timed_discover, _AgainSecs },
              State = #statev2{watchnodes=[]}) ->
   { noreply, State };
 
 %Swallow unknown messages
-handle_info (_Msg, State) ->
+handle_info (Msg, State) ->
+  error_logger:info_msg("Unknown msg: ~p",[Msg]),
   { noreply, State }.
 
 terminate (_Reason, State = #statev2{}) ->
@@ -118,10 +119,13 @@ discover (State) ->
   Time = seconds (),
   Mac = mac ([ <<Time:64>>, NodeString ]),
   Message = [ "DISCOVERV2 ", Mac, " ", <<Time:64>>, " ", NodeString ],
-  ok = gen_udp:send (State#statev2.sendsock,
+  case gen_udp:send (State#statev2.sendsock,
                      State#statev2.addr,
                      State#statev2.port,
-                     Message),
+                     Message) of
+     ok           -> ok;
+     {error, Err} -> error_logger:warning_msg("   UDP send error: ~p~n",[Err])
+  end,
   State.
 
 mac (Message) ->
