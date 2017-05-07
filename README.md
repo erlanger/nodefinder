@@ -22,10 +22,12 @@ added several features, and error handling.
 
 ## How to use ##
 
-1. Add nodefinder as a dependency in your project. Put a line like this in rebar.config deps list:
-   ```
-   {nodefinder,    ".*",   {git, "git://github.com/erlanger/nodefinder",   {branch, master}}}
-   ```
+1. Add nodefinder as a dependency in your project.
+       * Put a line like this in rebar.config deps list:
+         ```
+         {nodefinder,    ".*",   {git, "git://github.com/erlanger/nodefinder",   {branch, master}}}
+         ```
+       * Or use erlang.mk and simply add `nodefinder` to your `DEPS`.
 2. Add nodefinder to the list of application dependencies in your .app file
 3. If you are using releases in rebar add nodefinder to the lists of applications in reltool.config
 

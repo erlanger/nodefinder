@@ -2,6 +2,7 @@
  [
   {description, "nodefinder - attach to multicast auto-discovered Erlang nodes"},
   {vsn, git},
+  {modules, []},
   {registered, [nodefindersrv]},
   {applications, [
                   kernel,
