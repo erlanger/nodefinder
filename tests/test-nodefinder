@@ -1,6 +1,6 @@
 #! /bin/sh
 
-DIR=`dirname $0`
+DIR=`dirname $(readlink -f "$0")`
 EBIN=$DIR/../_build/default/lib/nodefinder/ebin
 
 if [ ! -f $EBIN/nodefinder.app ]; then
