@@ -1,14 +1,13 @@
 #! /bin/sh
 
+EBIN=../_build/default/lib/nodefinder/ebin
+
 cleanup () {
   test -z "$erl" || kill $erl
 }
 
-erl -pa ../src -sname nodefinder_test1 -eval '
-  application:start (crypto),
-  { ok, [ App ] } = file:consult ("../src/nodefinder.app"),
-  ok = application:load (App),
-  ok = application:start (nodefinder),
+erl -pa $EBIN -sname nodefinder_test1 -eval '
+  {ok,_} = application:ensure_all_started (nodefinder),
   receive after 10000 -> ok end
 ' -noshell -noinput -s init stop &
 
@@ -18,17 +17,18 @@ trap cleanup INT QUIT TERM
 
 sleep 1
 
-erl -pa ../src -sname nodefinder_test2 -eval '
+erl -pa $EBIN -sname nodefinder_test2 -eval '
   "nodefinder_test2@" ++ Host = atom_to_list (node ()),
   [] = erlang:nodes (),
-  application:start (crypto),
-  { ok, [ App ] } = file:consult ("../src/nodefinder.app"),
-  ok = application:load (App),
-  ok = application:start (nodefinder),
+  {ok,_} = application:ensure_all_started (nodefinder),
   receive after 1000 -> ok end,
   Other = list_to_atom ("nodefinder_test1@" ++ Host),
-  [ Other ] = erlang:nodes (),
-  rpc:call (Other, init, stop, [])
+  Ret = case erlang:nodes () of
+     [ Other ] -> io:format("Test passed."), 0;
+     _         -> io:format("Test failed."), 1
+  end,
+  rpc:call (Other, init, stop, []),
+  halt(Ret)
 ' -noshell -noinput -s init stop || { cleanup; exit 1; }
 
 wait
