@@ -1,6 +1,12 @@
 #! /bin/sh
 
-EBIN=../_build/default/lib/nodefinder/ebin
+DIR=`dirname $0`
+EBIN=$DIR/../_build/default/lib/nodefinder/ebin
+
+if [ ! -f $EBIN/nodefinder.app ]; then
+   echo "Please build nodefinder by running make."
+   exit 1
+fi
 
 cleanup () {
   test -z "$erl" || kill $erl
