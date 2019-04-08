@@ -6,7 +6,7 @@
 
 -module (nodefindersrv).
 -behaviour (gen_server).
--export ([ start_link/2, start_link/3, discover/0 ]).
+-export ([ start_link/4, discover/0 ]).
 -export ([ init/1,
            handle_call/3,
            handle_cast/2,
@@ -16,18 +16,15 @@
 
 -oldrecord (state).
 
--record (state, { socket, addr, port }).
--record (statev2, { sendsock, recvsock, addr, port, watchnodes = [] }).
+-record (state, { socket, addr, port, ifname}).
+-record (statev2, { sendsock, recvsock, addr, port, ifname, watchnodes = [] }).
 
 %-=====================================================================-
 %-                                Public                               -
 %-=====================================================================-
 
-start_link (Addr, Port) ->
-  start_link (Addr, Port, 1).
-
-start_link (Addr, Port, Ttl) ->
-  gen_server:start_link ({ local, ?MODULE }, ?MODULE, [ Addr, Port, Ttl ], []).
+start_link (Addr, Port, Ttl, IfName) ->
+  gen_server:start_link ({ local, ?MODULE }, ?MODULE, [ Addr, Port, Ttl, IfName ], []).
 
 discover () ->
   gen_server:call (?MODULE, discover).
@@ -36,7 +33,7 @@ discover () ->
 %-                         gen_server callbacks                        -
 %-=====================================================================-
 
-init ([ Addr, Port, Ttl ]) ->
+init ([ Addr, Port, Ttl, IfName ]) ->
   process_flag (trap_exit, true),
 
   check_node_host(),
@@ -44,7 +41,7 @@ init ([ Addr, Port, Ttl ]) ->
 
   Opts = [ { active, true },
            { ip, Addr },
-           { add_membership, { Addr, { 0, 0, 0, 0 } } },
+           { add_membership, { Addr, getifaddrip (IfName) } },
            { multicast_loop, true },
            { reuseaddr, true },
            list ],
@@ -52,9 +49,10 @@ init ([ Addr, Port, Ttl ]) ->
   { ok, RecvSocket } = gen_udp:open (Port, Opts),
 
   { ok, discover (#statev2{ recvsock = RecvSocket,
-                            sendsock = send_socket (Ttl),
+                            sendsock = send_socket (Ttl, IfName),
                             addr = Addr,
-                            port = Port }) }.
+                            port = Port,
+                            ifname = IfName }) }.
 
 handle_call (discover, _From, State) -> { reply, ok, discover (State) };
 handle_call (_Request, _From, State) -> { noreply, State }.
@@ -101,9 +99,9 @@ terminate (_Reason, State = #statev2{}) ->
   gen_udp:close (State#statev2.sendsock),
   ok.
 
-code_change (_OldVsn, State = #state{}, _Extra) ->
+code_change (_OldVsn, State = #statev2{ifname = IfName}, _Extra) ->
   NewState = #statev2{ recvsock = State#state.socket,
-                       sendsock = send_socket (1),
+                       sendsock = send_socket (1, IfName),
                        addr = State#state.addr,
                        port = State#state.port },
   { ok, NewState };
@@ -127,6 +125,17 @@ discover (State) ->
      {error, Err} -> error_logger:warning_msg("   UDP send error: ~p~n",[Err])
   end,
   State.
+
+getifaddrip (IfName) ->
+  case inet:getifaddrs() of
+    {ok, IfAddrs} ->
+      {_IfName, IfData} = proplists:lookup(binary_to_list(IfName), IfAddrs),
+      case proplists:lookup(addr, IfData) of
+        {addr, IfAddr} -> IfAddr;
+        none         -> error_logger:error_msg("   No addr on specify interface: ~p~n", [IfName])
+      end;
+    {error, Err}  -> error_logger:error_msg("   Get interfaces addresses error: ~p~n",[Err])
+  end.
 
 mac (Message) ->
   % Don't use cookie directly, creates a known-plaintext attack on cookie.
@@ -176,10 +185,10 @@ process_packet (_Packet, _IP, _InPortNo, State) ->
 seconds () ->
   calendar:datetime_to_gregorian_seconds (calendar:universal_time ()).
 
-send_socket (Ttl) ->
-  SendOpts = [ { ip, { 0, 0, 0, 0 } },
-               { multicast_ttl, Ttl },
-               { multicast_loop, true } ],
+send_socket (Ttl, IfName) ->
+  SendOpts = [ { multicast_ttl, Ttl },
+               { multicast_loop, true },
+               { bind_to_device, IfName } ],
 
   { ok, SendSocket } = gen_udp:open (0, SendOpts),
 
@@ -204,4 +213,3 @@ check_node_host() ->
                       {ok, _}    -> ok
                    end
    end.
-
