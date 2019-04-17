@@ -34,12 +34,7 @@ start (_Type, _Args) ->
   { ok, Addr } = application:get_env (nodefinder, addr),
   { ok, Port } = application:get_env (nodefinder, port),
   { ok, Ttl } = application:get_env (nodefinder, multicast_ttl),
-  case application:get_env (nodefinder, if_name) of
-    { ok, IfName } ->
-      nodefindersup:start_link (Addr, Port, Ttl, IfName);
-    undefined ->
-      nodefinder:start_link (Addr, Port, Ttl)
-  end.
+  nodefindersup:start_link (Addr, Port, Ttl).
 
 %% @hidden
 
