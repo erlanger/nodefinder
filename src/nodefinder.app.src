@@ -11,4 +11,3 @@
   {mod, { nodefinder, []}},
   {env, [{addr,{226,0,0,1}},{port,6969},{multicast_ttl,1}]}
  ]}.
-
