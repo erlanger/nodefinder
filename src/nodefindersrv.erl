@@ -6,7 +6,7 @@
 
 -module (nodefindersrv).
 -behaviour (gen_server).
--export ([ start_link/4, discover/0 ]).
+-export ([ start_link/2, start_link/3, start_link/4, discover/0 ]).
 -export ([ init/1,
            handle_call/3,
            handle_cast/2,
@@ -23,8 +23,19 @@
 %-                                Public                               -
 %-=====================================================================-
 
+start_link (Addr, Port) ->
+  start_link (Addr, Port, 1).
+
+start_link (Addr, Port, Ttl) ->
+  gen_server:start_link ({ local, ?MODULE }, ?MODULE, [ { addr, Addr },
+                                                        { port, Port },
+                                                        { ttl, Ttl } ], []).
+
 start_link (Addr, Port, Ttl, IfName) ->
-  gen_server:start_link ({ local, ?MODULE }, ?MODULE, [ Addr, Port, Ttl, IfName ], []).
+  gen_server:start_link ({ local, ?MODULE }, ?MODULE, [ { addr, Addr },
+                                                        { port, Port },
+                                                        { ttl, Ttl },
+                                                        { if_name, IfName} ], []).
 
 discover () ->
   gen_server:call (?MODULE, discover).
@@ -33,26 +44,20 @@ discover () ->
 %-                         gen_server callbacks                        -
 %-=====================================================================-
 
-init ([ Addr, Port, Ttl, IfName ]) ->
+init (Args) ->
   process_flag (trap_exit, true),
 
   check_node_host(),
   net_kernel:monitor_nodes(true),
 
-  Opts = [ { active, true },
-           { ip, Addr },
-           { add_membership, { Addr, getifaddrip (IfName) } },
-           { multicast_loop, true },
-           { reuseaddr, true },
-           list ],
+  Opts = init_socket_opts (Args),
 
+  Port = proplists:get_value (port, Args),
   { ok, RecvSocket } = gen_udp:open (Port, Opts),
 
-  { ok, discover (#statev2{ recvsock = RecvSocket,
-                            sendsock = send_socket (Ttl, IfName),
-                            addr = Addr,
-                            port = Port,
-                            ifname = IfName }) }.
+  State = init_statev2 (RecvSocket, Args),
+
+  { ok, discover (State) }.
 
 handle_call (discover, _From, State) -> { reply, ok, discover (State) };
 handle_call (_Request, _From, State) -> { noreply, State }.
@@ -111,6 +116,26 @@ code_change (_OldVsn, State, _Extra) ->
 %-=====================================================================-
 %-                               Private                               -
 %-=====================================================================-
+
+init_statev2 (RecvSocket, Args) ->
+  Ttl = proplists:get_value (ttl, Args),
+  #statev2{ recvsock = RecvSocket,
+            sendsock = send_socket (Ttl, proplists:get_value (if_name, Args)),
+            addr = proplists:get_value (addr, Args),
+            port = proplists:get_value (port, Args) }.
+
+init_socket_opts (Args) ->
+  Addr = proplists:get_value (addr, Args),
+  Membership =
+    case proplists:get_value (if_name, Args) of
+      undefined -> [ { add_membership, { Addr, { 0, 0, 0, 0 } } } ];
+      IfName    -> [ { add_membership, { Addr, getifaddrip (IfName) } } ]
+    end,
+  [ { active, true },
+    { ip, Addr },
+    { multicast_loop, true },
+    { reuseaddr, true },
+    list | Membership ].
 
 discover (State) ->
   NodeString = atom_to_list (node ()),
@@ -186,9 +211,13 @@ seconds () ->
   calendar:datetime_to_gregorian_seconds (calendar:universal_time ()).
 
 send_socket (Ttl, IfName) ->
+  SendInterface =
+    case IfName of
+      undefined -> [ { ip, { 0, 0, 0, 0 } } ];
+      _IfName   -> [ { bind_to_device, IfName } ]
+    end,
   SendOpts = [ { multicast_ttl, Ttl },
-               { multicast_loop, true },
-               { bind_to_device, IfName } ],
+               { multicast_loop, true } | SendInterface ],
 
   { ok, SendSocket } = gen_udp:open (0, SendOpts),
 
